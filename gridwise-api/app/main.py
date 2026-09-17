@@ -67,12 +67,23 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------
+from fastapi.encoders import jsonable_encoder
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for err in exc.errors():
+        clean_err = {
+            "type": err.get("type"),
+            "loc": [str(x) for x in err.get("loc", [])],
+            "msg": str(err.get("msg")),
+        }
+        errors.append(clean_err)
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        content={"error": "Invalid request schema", "details": exc.errors()},
+        content={"error": "Invalid request schema", "details": errors},
     )
+
 
 
 @app.exception_handler(Exception)
@@ -115,14 +126,8 @@ async def optimize_energy(request: OptimizeRequest):
             operator_notes=request.operator_notes,
             battery_capacity=request.battery.capacity_kwh,
         )
-    except RuntimeError as exc:
-        logger.error("LLM call failed for scenario %s: %s", scenario_id, exc)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"error": f"LLM service error: {str(exc)}"},
-        )
-    except ValueError as exc:
-        logger.error("LLM output parsing failed for scenario %s: %s", scenario_id, exc)
+    except Exception as exc:
+        logger.warning("LLM call or parsing failed for scenario %s: %s. Using safe no_op fallback.", scenario_id, exc)
         # Safe failure: create no_op fallback for all notes
         raw_directives = [
             {
@@ -130,10 +135,11 @@ async def optimize_energy(request: OptimizeRequest):
                 "applies": False,
                 "directive_type": "no_op",
                 "structured_adjustment": None,
-                "explanation": f"LLM parse failure: {exc}",
+                "explanation": f"LLM unavailable or malformed output; safe no-op fallback applied.",
             }
             for i in range(len(request.operator_notes))
         ]
+
 
     # Step 2: Deterministic Guardrails
     validated_directives = validate_all_directives(

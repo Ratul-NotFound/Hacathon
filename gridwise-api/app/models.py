@@ -55,6 +55,51 @@ class OptimizeRequest(BaseModel):
     hours: List[HourEntry] = Field(..., min_length=24, max_length=24)
     battery: Battery
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "scenario_id": "SAMPLE-01",
+                "operator_notes": [
+                    "Facilities will wash the rooftop solar panels from noon until 2 PM. During cleaning, usable solar should be treated as roughly 25% of the forecast.",
+                    "The sports office moved next month's registration deadline."
+                ],
+                "battery": {
+                    "capacity_kwh": 220,
+                    "initial_energy_kwh": 110,
+                    "minimum_energy_kwh": 40,
+                    "max_charge_kwh_per_hour": 50,
+                    "max_discharge_kwh_per_hour": 50
+                },
+                "hours": [
+                    {"hour": 0, "demand_kwh": 90, "solar_kwh": 0, "tariff_bdt_per_kwh": 6},
+                    {"hour": 1, "demand_kwh": 85, "solar_kwh": 0, "tariff_bdt_per_kwh": 6},
+                    {"hour": 2, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 6},
+                    {"hour": 3, "demand_kwh": 80, "solar_kwh": 0, "tariff_bdt_per_kwh": 5},
+                    {"hour": 4, "demand_kwh": 85, "solar_kwh": 0, "tariff_bdt_per_kwh": 5},
+                    {"hour": 5, "demand_kwh": 95, "solar_kwh": 0, "tariff_bdt_per_kwh": 6},
+                    {"hour": 6, "demand_kwh": 110, "solar_kwh": 5, "tariff_bdt_per_kwh": 8},
+                    {"hour": 7, "demand_kwh": 130, "solar_kwh": 20, "tariff_bdt_per_kwh": 10},
+                    {"hour": 8, "demand_kwh": 150, "solar_kwh": 50, "tariff_bdt_per_kwh": 12},
+                    {"hour": 9, "demand_kwh": 170, "solar_kwh": 90, "tariff_bdt_per_kwh": 14},
+                    {"hour": 10, "demand_kwh": 180, "solar_kwh": 130, "tariff_bdt_per_kwh": 15},
+                    {"hour": 11, "demand_kwh": 190, "solar_kwh": 160, "tariff_bdt_per_kwh": 16},
+                    {"hour": 12, "demand_kwh": 195, "solar_kwh": 180, "tariff_bdt_per_kwh": 16},
+                    {"hour": 13, "demand_kwh": 195, "solar_kwh": 170, "tariff_bdt_per_kwh": 16},
+                    {"hour": 14, "demand_kwh": 190, "solar_kwh": 140, "tariff_bdt_per_kwh": 16},
+                    {"hour": 15, "demand_kwh": 180, "solar_kwh": 100, "tariff_bdt_per_kwh": 16},
+                    {"hour": 16, "demand_kwh": 170, "solar_kwh": 50, "tariff_bdt_per_kwh": 15},
+                    {"hour": 17, "demand_kwh": 180, "solar_kwh": 15, "tariff_bdt_per_kwh": 20},
+                    {"hour": 18, "demand_kwh": 200, "solar_kwh": 0, "tariff_bdt_per_kwh": 24},
+                    {"hour": 19, "demand_kwh": 220, "solar_kwh": 0, "tariff_bdt_per_kwh": 28},
+                    {"hour": 20, "demand_kwh": 205, "solar_kwh": 0, "tariff_bdt_per_kwh": 26},
+                    {"hour": 21, "demand_kwh": 175, "solar_kwh": 0, "tariff_bdt_per_kwh": 18},
+                    {"hour": 22, "demand_kwh": 135, "solar_kwh": 0, "tariff_bdt_per_kwh": 10},
+                    {"hour": 23, "demand_kwh": 105, "solar_kwh": 0, "tariff_bdt_per_kwh": 7}
+                ]
+            }
+        }
+    }
+
     @model_validator(mode="after")
     def validate_hours(self) -> "OptimizeRequest":
         hour_values = [h.hour for h in self.hours]
@@ -66,6 +111,7 @@ class OptimizeRequest(BaseModel):
             if not note.strip():
                 raise ValueError("All operator_notes must be non-empty strings")
         return self
+
 
 
 # ---------------------------------------------------------------------------
