@@ -22,11 +22,15 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "groq").lower()
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+def get_config():
+    return {
+        "LLM_PROVIDER": os.environ.get("LLM_PROVIDER", "groq").lower(),
+        "GROQ_API_KEY": os.environ.get("GROQ_API_KEY", ""),
+        "GROQ_MODEL": os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
+        "GEMINI_API_KEY": os.environ.get("GEMINI_API_KEY", ""),
+        "GEMINI_MODEL": os.environ.get("GEMINI_MODEL", "gemini-2.0-flash"),
+    }
+
 
 # ---------------------------------------------------------------------------
 # Supported directive type descriptions for the prompt
@@ -141,15 +145,19 @@ def _call_groq(operator_notes: List[str], battery_capacity: float) -> List[Dict[
     """Call Groq API using the openai-compatible SDK."""
     from groq import Groq
 
-    if not GROQ_API_KEY:
+    cfg = get_config()
+    api_key = cfg["GROQ_API_KEY"]
+    model = cfg["GROQ_MODEL"]
+
+    if not api_key:
         raise RuntimeError("GROQ_API_KEY environment variable is not set")
 
-    client = Groq(api_key=GROQ_API_KEY)
+    client = Groq(api_key=api_key)
     user_message = _build_user_message(operator_notes, battery_capacity)
 
     try:
         response = client.chat.completions.create(
-            model=GROQ_MODEL,
+            model=model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_message},
@@ -170,6 +178,12 @@ def _call_groq(operator_notes: List[str], battery_capacity: float) -> List[Dict[
         logger.error("Failed to parse Groq LLM JSON: %s | raw: %s", exc, raw_text)
         raise ValueError(f"Groq LLM returned unparseable output: {exc}") from exc
 
+    if isinstance(parsed, dict):
+        for key in ("directives", "results", "adjustments", "items"):
+            if key in parsed and isinstance(parsed[key], list):
+                return parsed[key]
+        parsed = [parsed]
+
     if not isinstance(parsed, list):
         raise ValueError("Groq LLM response is not a JSON array")
 
@@ -180,12 +194,16 @@ def _call_gemini(operator_notes: List[str], battery_capacity: float) -> List[Dic
     """Call Google Gemini API."""
     import google.generativeai as genai
 
-    if not GEMINI_API_KEY:
+    cfg = get_config()
+    api_key = cfg["GEMINI_API_KEY"]
+    model_name = cfg["GEMINI_MODEL"]
+
+    if not api_key:
         raise RuntimeError("GEMINI_API_KEY environment variable is not set")
 
-    genai.configure(api_key=GEMINI_API_KEY)
+    genai.configure(api_key=api_key)
     model = genai.GenerativeModel(
-        model_name=GEMINI_MODEL,
+        model_name=model_name,
         system_instruction=SYSTEM_PROMPT,
     )
 
@@ -210,6 +228,12 @@ def _call_gemini(operator_notes: List[str], battery_capacity: float) -> List[Dic
         logger.error("Failed to parse Gemini JSON: %s | raw: %s", exc, raw_text)
         raise ValueError(f"Gemini LLM returned unparseable output: {exc}") from exc
 
+    if isinstance(parsed, dict):
+        for key in ("directives", "results", "adjustments", "items"):
+            if key in parsed and isinstance(parsed[key], list):
+                return parsed[key]
+        parsed = [parsed]
+
     if not isinstance(parsed, list):
         raise ValueError("Gemini LLM response is not a JSON array")
 
@@ -224,8 +248,9 @@ def interpret_notes_with_llm(
     Interpret operator notes using the configured LLM provider.
     Returns a list of raw dicts (not yet guardrail-validated).
     """
-    provider = LLM_PROVIDER
-    logger.info("Using LLM provider: %s", provider)
+    cfg = get_config()
+    provider = cfg["LLM_PROVIDER"]
+    logger.info("Using LLM provider: %s (model: %s)", provider, cfg.get("GROQ_MODEL") if provider == "groq" else cfg.get("GEMINI_MODEL"))
 
     if provider == "groq":
         return _call_groq(operator_notes, battery_capacity)
@@ -233,3 +258,4 @@ def interpret_notes_with_llm(
         return _call_gemini(operator_notes, battery_capacity)
     else:
         raise RuntimeError(f"Unknown LLM_PROVIDER: {provider!r}. Use 'groq' or 'gemini'.")
+

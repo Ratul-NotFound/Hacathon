@@ -138,12 +138,12 @@ def main():
     try:
         r = requests.get(f"{base_url}/health", timeout=10)
         if r.status_code == 200 and r.json().get("status") == "ok":
-            print("  ✅ /health OK")
+            print("  [OK] /health OK")
         else:
-            print(f"  ❌ /health returned {r.status_code}: {r.text}")
+            print(f"  [FAIL] /health returned {r.status_code}: {r.text}")
             sys.exit(1)
     except Exception as e:
-        print(f"  ❌ /health failed: {e}")
+        print(f"  [FAIL] /health failed: {e}")
         sys.exit(1)
 
     # Load cases
@@ -171,7 +171,7 @@ def main():
             elapsed = time.time() - start
 
             if r.status_code != 200:
-                print(f"  ❌ HTTP {r.status_code} in {elapsed:.1f}s: {r.text[:200]}")
+                print(f"  [FAIL] HTTP {r.status_code} in {elapsed:.1f}s: {r.text[:200]}")
                 failed += 1
                 continue
 
@@ -179,17 +179,17 @@ def main():
             issues = check_response(case, resp_json)
 
             if issues:
-                print(f"  ⚠️  Passed HTTP in {elapsed:.1f}s, but found issues:")
+                print(f"  [WARN] Passed HTTP in {elapsed:.1f}s, but found issues:")
                 for issue in issues:
-                    print(f"     • {issue}")
+                    print(f"     * {issue}")
                 failed += 1
             else:
-                print(f"  ✅ PASS ({elapsed:.1f}s) | Cost: {resp_json.get('total_cost_bdt', '?')} BDT")
+                print(f"  [PASS] ({elapsed:.1f}s) | Cost: {resp_json.get('total_cost_bdt', '?')} BDT")
                 passed += 1
 
         except Exception as e:
             elapsed = time.time() - start
-            print(f"  ❌ Exception after {elapsed:.1f}s: {e}")
+            print(f"  [FAIL] Exception after {elapsed:.1f}s: {e}")
             failed += 1
 
     print(f"\n{'='*70}")
