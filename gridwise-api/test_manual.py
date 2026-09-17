@@ -32,9 +32,11 @@ if res.status_code == 200:
     print(f"  Peak Grid:  {data['peak_grid_kwh']} kWh")
 
     print("\n--- 4. HOURLY PLAN (HOURS 10 to 16) ---")
-    print(f"{'Hour':<6}{'Demand':<10}{'SolarPV':<10}{'SolarUsed':<12}{'Grid':<10}{'Charge':<10}{'Discharge':<12}{'BattState'}")
+    print(f"{'Hour':<6}{'Grid(kWh)':<12}{'SolarUsed(kWh)':<16}{'Action':<12}{'Batt(kWh)':<12}{'SoC After(kWh)'}")
+    print("-" * 65)
     for h in data["hourly_plan"]:
         if 10 <= h["hour"] <= 16:
-            print(f"{h['hour']:<6}{h['demand_kwh']:<10.1f}{h['solar_pv_kwh']:<10.1f}{h['solar_used_kwh']:<12.1f}{h['grid_kwh']:<10.1f}{h['battery_charge_kwh']:<10.1f}{h['battery_discharge_kwh']:<12.1f}{h['battery_state_kwh']:.1f}")
+            print(f"{h['hour']:<6}{h['grid_kwh']:<12.1f}{h['solar_used_kwh']:<16.1f}{h['battery_action']:<12}{h['battery_kwh']:<12.1f}{h['battery_energy_after_kwh']:.1f}")
+
 else:
     print("ERROR:", res.text)
